@@ -1,0 +1,45 @@
+syntax = "proto3";
+
+package remote_target;
+
+service RemoteTarget {
+  // Request a connection
+  rpc RequestConnection (EmptyReq) returns (Ping) {}
+  // Confirmes the connection
+  rpc ConfirmConnection (Pong) returns (ConnectionConfirmed) {}
+  // Terminates the connection
+  rpc Disconnect (EmptyReq) returns (ConnectionTerminated) {}
+
+  // Available only after confirmed connection
+  rpc GetDeviceSpec (EmptyReq) returns (DeviceSpec) {}
+}
+
+message EmptyReq {
+  int32 tod = 1;
+}
+
+message ConnectionConfirmed {
+  bool success = 1;
+  int32 tod = 2;
+}
+
+message ConnectionTerminated {
+  int32 tod = 1;
+}
+
+message Ping {
+  int32 value = 1;
+}
+
+message Pong {
+  int32 value = 1;
+}
+
+message DeviceSpec {
+  string name = 1;
+  string OS_version = 2;
+  string serial_number = 3;
+  int32 RAM_size = 4;
+  int32 RAM_usage = 5;
+  int32 tod = 6;
+}
