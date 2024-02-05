@@ -1,9 +1,16 @@
 cmake_minimum_required(VERSION 3.15 FATAL_ERROR)
 project(remote_target_server)
 
-set(SOURCES
+set(HEADERS
+	server.h
 	connection.h
 	DeviceSpec.h
+)
+
+set(SOURCES
+	${HEADERS}
+	server.cpp
+	DeviceSpec.cpp
 	main.cpp
 )
 
