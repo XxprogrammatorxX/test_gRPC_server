@@ -2,7 +2,6 @@
 
 #include <string>
 #include <fstream>
-#include <regex>
 
 struct DeviceSpec
 {
@@ -29,15 +28,15 @@ std::string get_device_OS_version()
 	if (!input.good())
 		return "Unable to get";
 
-	const std::regex pieces_regex(R"(PRETTY_NAME="*")");
-	std::smatch pieces_match;
-
 	std::string line;
 	std::string version;
+	std::string version_key = "VERSION=";
 	while (std::getline (input, line))
-		if (std::regex_match(line, pieces_match, pieces_regex))
-			version = pieces_match[1];
-
+	{
+		auto pos = line.find(version_key);
+		if (pos != std::string::npos)
+			version = line.substr(pos + version_key.size());
+	}
 	return version.empty() ? "Unable to get" : version;
 }
 

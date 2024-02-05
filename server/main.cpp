@@ -8,7 +8,6 @@
 #include <shared_mutex>
 #include <thread>
 #include <chrono>
-#include <future>
 
 #include "connection.h"
 #include "DeviceSpec.h"
@@ -23,13 +22,13 @@ class RemoteTargetService final : public remote_target::RemoteTarget::Service {
 
 	void async_confirmation_waiter(std::shared_ptr<Connection> connection_ptr)
 	{
-		using namespace std::chrono;
-		std::this_thread::sleep_for(10s);
+		std::this_thread::sleep_for(std::chrono::seconds(10));
 
 		std::unique_lock lock(mutex);
 		auto it = connections.find(connection_ptr->id);
-		if (it != connections.end() && !connection_ptr->confirmed)
-			connections.erase(connection_ptr->id);
+		if (it != connections.end())
+			if(!connection_ptr->confirmed)
+				connections.erase(connection_ptr->id);
 
 		std::cout << "Connection " << connection_ptr->id << " dropped by a timeout." << std::endl;
 	}
@@ -46,7 +45,7 @@ class RemoteTargetService final : public remote_target::RemoteTarget::Service {
 			auto connection_ptr = std::make_shared<Connection>(id, false, tod);
 
 			connections.emplace(id, connection_ptr);
-			// std::async(std::launch::async, &RemoteTargetService::async_confirmation_waiter, this, connection_ptr);
+			std::thread(&RemoteTargetService::async_confirmation_waiter, this, connection_ptr).detach();
 
 			response->set_connectionid(id);
 			std::cout << "Connection " << id << " requested." << std::endl;
@@ -67,10 +66,12 @@ class RemoteTargetService final : public remote_target::RemoteTarget::Service {
 				{
 					it->second->confirmed = true;
 					response->set_success(true);
+					std::cout << "Connection " << id << " confirmed." << std::endl;
 				}
+				else
+					std::cout << "Connection " << id << " not confirmed." << std::endl;
 			}
 
-			std::cout << "Connection " << id << " confirmed." << std::endl;
 			return grpc::Status::OK;
 		}
 		// Terminates the connection
@@ -80,13 +81,13 @@ class RemoteTargetService final : public remote_target::RemoteTarget::Service {
 			{
 				std::unique_lock lock(mutex);
 				connections.erase(id);
+				std::cout << "Connection " << id << " dropped by a request." << std::endl;
 			}
 
 			using namespace std::chrono;
 			auto tod = duration_cast<seconds>(steady_clock::now().time_since_epoch()).count();
 			response->set_tod(tod);
 
-			std::cout << "Connection " << id << " dropped by a request." << std::endl;
 			return grpc::Status::OK;
 		}
 		// Available only after confirmed connection
@@ -100,13 +101,15 @@ class RemoteTargetService final : public remote_target::RemoteTarget::Service {
 			if (it != connections.end() && it->second->confirmed)
 			{
 				spec = get_device_spec();
+				std::cout << "DeviceSpec been shared with connection " << id << "." << std::endl;
 			}
+			else
+				std::cout << "Empty DeviceSpec been shared with connection " << id << "." << std::endl;
 
 			response->set_name(spec.name);
 			response->set_os_version(spec.OS_version);
 			response->set_serial_number(spec.serial_number);
 
-			std::cout << "DeviceSpec been shared with connection " << id << "." << std::endl;
 			return grpc::Status::OK;		
 		}
 
